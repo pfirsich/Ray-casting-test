@@ -44,9 +44,10 @@ function love.update()
 	markers = {}
 	castRay_naive(grid, cellSize, ray)
 	--castRay_accurate(grid, cellSize, ray)
-	--castRay_clearer_temp()
-	--castRay_clearer_temp_alldirs()
-	--castRay_DDA(grid, ray)
+	--castRay_clearer_temp(grid, cellSize, ray)
+	--castRay_clearer_temp_alldirs(grid, cellSize, ray)
+	--castRay_clearer_temp_alldirs_improved(grid, cellSize, ray)
+	--castRay_DDA(grid, cellSize, ray)
 end
 
 function love.draw()
