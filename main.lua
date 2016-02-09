@@ -90,15 +90,9 @@ function tileCoords(cellSize, p)
 	return math.floor(p[1] / cellSize) + 1, math.floor(p[2] / cellSize) + 1
 end
 
-function visitGrid(grid, cellSize, point)
-	local tileX, tileY = tileCoords(cellSize, point)
-	table.insert(markers, point)
-	-- love.graphics.clear(love.graphics.getBackgroundColor())
-	-- love.draw()
-	-- love.graphics.present()
-	-- love.timer.sleep(1)
-	grid[tileY][tileX] = true
-	return tileX, tileY
+function mark(x, y)
+	if y == nil then x, y = unpack(x) end
+	table.insert(markers, {x, y})
 end
 
 function castRay_naive(grid, cellSize, ray)
@@ -106,7 +100,9 @@ function castRay_naive(grid, cellSize, ray)
 	local dir = vmul(vnormed(ray.dir), cellSize * 0.9)
 	if vdot(dir, dir) > 1 then
 		while cur[1] > 0 and cur[1] < width*cellSize and cur[2] > 0 and cur[2] < height*cellSize do
-			local x, y = visitGrid(grid, cellSize, cur)
+			local tileX, tileY = tileCoords(cellSize, cur)
+			grid[tileY][tileX] = true
+			mark(cur)
 			cur = vadd(cur, dir)
 		end
 	end
@@ -122,10 +118,12 @@ function castRay_clearer_temp_alldirs(grid, cellSize, ray)
 
 	if vdot(dir, dir) > 1 then
 		while cur[1] > 0 and cur[1] < width*cellSize and cur[2] > 0 and cur[2] < height*cellSize do
-			local x, y = visitGrid(grid, cellSize, cur) -- returns tile coordinates
+			local tileX, tileY = tileCoords(cellSize, cur)
+			grid[tileY][tileX] = true
+			mark(cur)
 
-			local dtX = ((x + dirSignX)*cellSize - cur[1]) / dir[1] -- distances to next borders
-			local dtY = ((y + dirSignY)*cellSize - cur[2]) / dir[2]
+			local dtX = ((tileX + dirSignX)*cellSize - cur[1]) / dir[1] -- distances to next borders
+			local dtY = ((tileY + dirSignY)*cellSize - cur[2]) / dir[2]
 
 			if dtX < dtY then
 				t = t + dtX + 0.001
@@ -144,11 +142,12 @@ function castRay_clearer_temp(grid, cellSize, ray) -- only works for positive x 
 
 	if vdot(dir, dir) > 1 then
 		while cur[1] > 0 and cur[1] < width*cellSize and cur[2] > 0 and cur[2] < height*cellSize do
-			local x, y = tileCoords(grid, cellSize, cur)
-			grid[y][x] = true
+			local tileX, tileY = tileCoords(cellSize, cur)
+			grid[tileY][tileX] = true
+			mark(cur)
 
-			local dtX = ((x)*cellSize - cur[1]) / dir[1] -- distances to next borders
-			local dtY = ((y)*cellSize - cur[2]) / dir[2]
+			local dtX = ((tileX)*cellSize - cur[1]) / dir[1] -- distances to next borders
+			local dtY = ((tileY)*cellSize - cur[2]) / dir[2]
 
 			if dtX < dtY then
 				t = t + dtX
@@ -183,7 +182,9 @@ function castRay_accurate(grid, cellSize, ray)
 	local y, yStep, tMaxY, tDeltaY = getRayCastHelperValues(cellSize, ray.start[2], ray.dir[2])
 
 	while x > 0 and x <= width and y > 0 and y <= height do
-		visitGrid(grid, cellSize, vadd(ray.start, vmul(ray.dir, math.min(tMaxX, tMaxY))))
+		grid[y][x] = true
+		mark(vadd(ray.start, vmul(ray.dir, math.min(tMaxX, tMaxY))))
+
 		if(tMaxX < tMaxY) then
 			tMaxX = tMaxX + tDeltaX
 			x = x + xStep
@@ -194,9 +195,9 @@ function castRay_accurate(grid, cellSize, ray)
 	end
 end
 
-function castRay_DDA(grid, ray)
-	local origin = ray[1]
-	local dir = vsub(ray[2], ray[1])
+function castRay_DDA(grid, cellSize, ray)
+	local origin = vret(ray.start)
+	local dir = vret(ray.dir)
 
 	local slope = math.abs(dir[2]/dir[1])
 	local dx, dy
@@ -215,8 +216,8 @@ function castRay_DDA(grid, ray)
 	if dx ~= 0 or dy ~= 0 then
 		local cur = vret(origin)
 		while cur[1] > 0 and cur[1] < width*cellSize and cur[2] > 0 and cur[2] < height*cellSize do
-			local x, y = tileCoords(cur)
-			grid[y][x] = true
+			local tileX, tileY = tileCoords(cellSize, cur)
+			grid[tileY][tileX] = true
 
 			cur[1] = cur[1] + dx
 			cur[2] = cur[2] + dy
