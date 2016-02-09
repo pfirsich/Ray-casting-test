@@ -60,7 +60,9 @@ function love.draw()
 			if grid[y][x] then
 				love.graphics.setColor(255, 0, 0, 50)
 				love.graphics.rectangle("fill", (x-1)*cellSize, (y-1)*cellSize, cellSize, cellSize)
-			elseif exactGrid[y][x] then
+			end
+
+			if exactGrid[y][x] ~= grid[y][x] then
 				local padding = cellSize*0.25
 				love.graphics.rectangle("fill", (x-1)*cellSize + padding, (y-1)*cellSize + padding, cellSize - padding*2, cellSize - padding*2)
 			end
