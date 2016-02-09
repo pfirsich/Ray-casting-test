@@ -69,8 +69,10 @@ function love.draw()
 		end
 	end
 
+	love.graphics.setLineWidth(2)
 	love.graphics.setColor(255, 0, 0, 255)
 	love.graphics.line(ray.start[1], ray.start[2], ray.start[1] + ray.dir[1], ray.start[2] + ray.dir[2])
+	love.graphics.setLineWidth(1)
 
 	for i = 1, #markers do
 		love.graphics.setColor(0, 0, 0, 200)
