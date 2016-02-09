@@ -226,31 +226,19 @@ function castRay_accurate(grid, cellSize, ray)
 end
 
 function castRay_DDA(grid, cellSize, ray)
-	local origin = vret(ray.start)
-	local dir = vret(ray.dir)
+	local startX, startY = tileCoords(cellSize, ray.start)
+	local endX, endY = tileCoords(cellSize, vadd(ray.start, ray.dir))
+	local relX, relY = endX - startX, endY - startY
 
-	local slope = math.abs(dir[2]/dir[1])
-	local dx, dy
+	local steps = math.max(math.abs(relX), math.abs(relY))
 
-	if slope > 1.0 then
-		dx, dy = 1/slope, 1
-	else
-		dx, dy = 1, slope
-	end
-	if dir[1] < 0 then dx = -dx end
-	if dir[2] < 0 then dy = -dy end
-
-	if dir[1] == 0 then dx = 0 end
-	if dir[2] == 0 then dy = 0 end
+	local dx, dy = relX / steps, relY / steps
 
 	if dx ~= 0 or dy ~= 0 then
-		local cur = vret(origin)
-		while cur[1] > 0 and cur[1] < width*cellSize and cur[2] > 0 and cur[2] < height*cellSize do
-			local tileX, tileY = tileCoords(cellSize, cur)
-			grid[tileY][tileX] = true
-
-			cur[1] = cur[1] + dx
-			cur[2] = cur[2] + dy
+		local curX, curY = tileCoords(cellSize, ray.start)
+		while curX > 0 and curX <= width and curY > 0 and curY <= height do
+			grid[math.floor(curY)][math.floor(curX)] = true
+			curX, curY = curX + dx, curY + dy
 		end
 	end
 end
