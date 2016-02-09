@@ -135,6 +135,36 @@ function castRay_clearer_temp_alldirs(grid, cellSize, ray)
 	end
 end
 
+function castRay_clearer_temp_alldirs_improved(grid, cellSize, ray)
+	local t = 0
+	local cur = vret(ray.start)
+	local dir = vret(ray.dir)
+
+    local dirSignX = dir[1] > 0 and 0 or -1
+    local dirSignY = dir[2] > 0 and 0 or -1
+
+    local tileX, tileY = tileCoords(cellSize, cur)
+
+	if vdot(dir, dir) > 1 then
+		while tileX > 0 and tileX <= width and tileY > 0 and tileY <= height do
+			grid[tileY][tileX] = true
+			mark(cur)
+
+			local dtX = ((tileX + dirSignX)*cellSize - cur[1]) / dir[1] -- distances to next borders
+			local dtY = ((tileY + dirSignY)*cellSize - cur[2]) / dir[2]
+
+			if dtX < dtY then
+				t = t + dtX
+				tileX = tileX + 1
+			else
+				t = t + dtY
+				tileY = tileY + 1
+			end
+			cur = vadd(ray.start, vmul(dir, t))
+		end
+	end
+end
+
 function castRay_clearer_temp(grid, cellSize, ray) -- only works for positive x and y direction, just for clarification
 	local t = 0
 	local cur = vret(ray.start)
