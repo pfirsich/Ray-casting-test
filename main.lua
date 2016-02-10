@@ -48,6 +48,7 @@ function love.update()
 	--castRay_clearer_temp_alldirs(grid, cellSize, ray)
 	--castRay_clearer_temp_alldirs_improved(grid, cellSize, ray)
 	--castRay_DDA(grid, cellSize, ray)
+	--castRay_Bresenham(grid, cellSize, ray)
 end
 
 function love.draw()
@@ -249,6 +250,38 @@ function castRay_DDA(grid, cellSize, ray)
 			-- I don't know why I need this, and I feel ashamed of myself because of it
 			grid[math.floor(curY+0.5)][math.floor(curX+0.5)] = true
 			curX, curY = curX + dx, curY + dy
+		end
+	end
+end
+
+-- https://de.wikipedia.org/wiki/Bresenham-Algorithmus#Kompakte_Variante
+function castRay_Bresenham(grid, cellSize, ray)
+	local startX, startY = tileCoords(cellSize, ray.start)
+	local endX, endY = tileCoords(cellSize, vadd(ray.start, ray.dir))
+
+	local dx = math.abs(endX - startX)
+	local dy = math.abs(endY - startY)
+	local incX = endX > startX and 1 or -1
+	local incY = endY > startY and 1 or -1
+
+	local err, e2 = dx-dy, nil
+
+	if dx == 0 and dy == 0 then
+		grid[startY][startX] = true
+		return
+	end
+
+	while startX > 0 and startX <= width and startY > 0 and startY <= height do
+		grid[startY][startX] = true
+
+		e2 = 2*err
+		if e2 > -dy then
+		  err = err - dy
+		  startX  = startX + incX
+		end
+		if e2 < dx then
+		  err = err + dx
+		  startY  = startY + incY
 		end
 	end
 end
