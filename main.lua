@@ -66,6 +66,14 @@ function love.draw()
 				local padding = cellSize*0.25
 				love.graphics.rectangle("fill", (x-1)*cellSize + padding, (y-1)*cellSize + padding, cellSize - padding*2, cellSize - padding*2)
 			end
+
+			if love.keyboard.isDown("d") then -- diamonds
+				love.graphics.line( (x-0.5    )*cellSize, (y-0.5+0.5)*cellSize,
+									(x-0.5+0.5)*cellSize, (y-0.5    )*cellSize,
+									(x-0.5    )*cellSize, (y-0.5-0.5)*cellSize,
+									(x-0.5-0.5)*cellSize, (y-0.5    )*cellSize,
+									(x-0.5    )*cellSize, (y-0.5+0.5)*cellSize)
+			end
 		end
 	end
 
