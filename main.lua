@@ -1,37 +1,38 @@
-require "math_vec"
-
 function love.load()
-	cellSize = 128
-	width = math.ceil(love.graphics.getWidth() / cellSize)
-	height = math.ceil(love.graphics.getHeight() / cellSize)
-
 	grid = {}
+	grid.cellSize = 128
+	grid.width = math.ceil(love.graphics.getWidth() / grid.cellSize)
+	grid.height = math.ceil(love.graphics.getHeight() / grid.cellSize)
+
 	exactGrid = {}
-	for y = 1, height do
+	exactGrid.cellSize, exactGrid.width, exactGrid.height = grid.cellSize, grid.width, grid.height
+
+	for y = 1, grid.height do
 		grid[y] = {}
 		exactGrid[y] = {}
-		for x = 1, width do
+		for x = 1, grid.width do
 			grid[y][x] = false
 			exactGrid[y][x] = false
 		end
 	end
 
-	ray = {start = {cellSize/2, cellSize/2}, dir = {cellSize, cellSize}}
+	ray = {startX = grid.cellSize/2, startY = grid.cellSize/2,
+		   dirX = grid.cellSize, dirY = grid.cellSize}
 
 	love.graphics.setBackgroundColor(255, 255, 255, 255)
 end
 
 function love.update()
 	-- update ray
-	local mpos = {love.mouse.getPosition()}
-	ray.dir = vsub(mpos, ray.start)
+	local mouseX, mouseY = love.mouse.getPosition()
+	ray.dirX, ray.dirY = mouseX - ray.startX, mouseY - ray.startY
 	if love.mouse.isDown(1) then
-		ray.start = mpos
+		ray.startX, ray.startY = mouseX, mouseY
 	end
 
 	-- clear
-	for y = 1, height do
-		for x = 1, width do
+	for y = 1, grid.height do
+		for x = 1, grid.width do
 			exactGrid[y][x] = false
 			grid[y][x] = false
 		end
@@ -39,48 +40,50 @@ function love.update()
 
 	-- cast rays
 	markers = {}
-	castRay_clearer_alldirs(exactGrid, cellSize, ray)
+	castRay_clearer_alldirs_improved_transformed(exactGrid, ray)
 
 	markers = {}
-	--castRay_naive(grid, cellSize, ray)
-	--castRay_accurate(grid, cellSize, ray)
-	--castRay_clearer_positive(grid, cellSize, ray)
-	--castRay_clearer_alldirs(grid, cellSize, ray)
-	castRay_clearer_alldirs_improved(grid, cellSize, ray)
-	--castRay_DDA(grid, cellSize, ray)
-	--castRay_Bresenham(grid, cellSize, ray)
+	castRay_naive(grid, ray)
+	--castRay_accurate(grid, ray)
+	--castRay_clearer_positive(grid, ray)
+	--castRay_clearer_alldirs(grid, ray)
+	--castRay_clearer_alldirs_improved(grid, ray)
+	--castRay_clearer_alldirs_improved_transformed(grid, ray)
+	--castRay_DDA(grid, ray)
+	--castRay_Bresenham(grid, ray)
 end
 
 function love.draw()
-	for y = 1, height do
-		for x = 1, width do
+	local cSize = grid.cellSize
+	for y = 1, grid.height do
+		for x = 1, grid.width do
 			love.graphics.setColor(220, 220, 220, 255)
-			love.graphics.rectangle("line", (x-1)*cellSize, (y-1)*cellSize, cellSize, cellSize)
-			love.graphics.print("(" .. tostring(x) .. ", " .. tostring(y) .. ")", (x-1)*cellSize + 2, (y-1)*cellSize + 2)
+			love.graphics.rectangle("line", (x-1)*cSize, (y-1)*cSize, cSize, cSize)
+			love.graphics.print("(" .. tostring(x) .. ", " .. tostring(y) .. ")", (x-1)*cSize + 2, (y-1)*cSize + 2)
 
 			if grid[y][x] then
 				love.graphics.setColor(255, 0, 0, 50)
-				love.graphics.rectangle("fill", (x-1)*cellSize, (y-1)*cellSize, cellSize, cellSize)
+				love.graphics.rectangle("fill", (x-1)*cSize, (y-1)*cSize, cSize, cSize)
 			end
 
 			if exactGrid[y][x] ~= grid[y][x] then
-				local padding = cellSize*0.25
-				love.graphics.rectangle("fill", (x-1)*cellSize + padding, (y-1)*cellSize + padding, cellSize - padding*2, cellSize - padding*2)
+				local padding = cSize*0.25
+				love.graphics.rectangle("fill", (x-1)*cSize + padding, (y-1)*cSize + padding, cSize - padding*2, cSize - padding*2)
 			end
 
 			if love.keyboard.isDown("d") then -- diamonds
-				love.graphics.line( (x-0.5    )*cellSize, (y-0.5+0.5)*cellSize,
-									(x-0.5+0.5)*cellSize, (y-0.5    )*cellSize,
-									(x-0.5    )*cellSize, (y-0.5-0.5)*cellSize,
-									(x-0.5-0.5)*cellSize, (y-0.5    )*cellSize,
-									(x-0.5    )*cellSize, (y-0.5+0.5)*cellSize)
+				love.graphics.line( (x-0.5    )*cSize, (y-0.5+0.5)*cSize,
+									(x-0.5+0.5)*cSize, (y-0.5    )*cSize,
+									(x-0.5    )*cSize, (y-0.5-0.5)*cSize,
+									(x-0.5-0.5)*cSize, (y-0.5    )*cSize,
+									(x-0.5    )*cSize, (y-0.5+0.5)*cSize)
 			end
 		end
 	end
 
 	love.graphics.setLineWidth(2)
 	love.graphics.setColor(255, 0, 0, 255)
-	love.graphics.line(ray.start[1], ray.start[2], ray.start[1] + ray.dir[1], ray.start[2] + ray.dir[2])
+	love.graphics.line(ray.startX, ray.startY, ray.startX + ray.dirX, ray.startY + ray.dirY)
 	love.graphics.setLineWidth(1)
 
 	for i = 1, #markers do
@@ -91,30 +94,29 @@ function love.draw()
 	end
 
 	love.graphics.setColor(0, 0, 0, 255)
-	love.graphics.print("ray start: " .. vstr(ray.start), 5, 5)
-	love.graphics.print("ray end: " .. vstr(ray.dir), 5, 15)
+	love.graphics.print("ray start: " .. tostring(ray.startX) .. ", " .. tostring(ray.startY), 5, 5)
+	love.graphics.print("ray dir: " .. tostring(ray.dirX) .. ", " .. tostring(ray.dirY), 5, 15)
 end
 
 function tileCoords(cellSize, x, y)
-	if y == nil then x, y = x[1], x[2] end
 	return math.floor(x / cellSize) + 1, math.floor(y / cellSize) + 1
 end
 
 function mark(x, y)
-	if y == nil then x, y = unpack(x) end
 	table.insert(markers, {x, y})
 end
 
-function castRay_naive(grid, cellSize, ray)
-	local cur = vret(ray.start)
-	local stepSize = cellSize * 0.9
-	local dir = vmul(vnormed(ray.dir), stepSize)
-	if vdot(dir, dir) > 1 then
-		while cur[1] > 0 and cur[1] < width*cellSize and cur[2] > 0 and cur[2] < height*cellSize do
-			local tileX, tileY = tileCoords(cellSize, cur)
+function castRay_naive(grid, ray)
+	local curX, curY = ray.startX, ray.startY
+	local stepSize = grid.cellSize * 0.9
+	local dirLen = math.sqrt(ray.dirX*ray.dirX + ray.dirY*ray.dirY)
+	local deltaX, deltaY = ray.dirX / dirLen * stepSize, ray.dirY / dirLen * stepSize
+	if dirLen > 0 then
+		while curX > 0 and curX < grid.width*grid.cellSize and curY > 0 and curY < grid.height*grid.cellSize do
+			local tileX, tileY = tileCoords(grid.cellSize, curX, curY)
 			grid[tileY][tileX] = true
-			mark(cur)
-			cur = vadd(cur, dir)
+			mark(curX, curY)
+			curX, curY = curX + deltaX, curY + deltaY
 		end
 	end
 end
@@ -134,15 +136,15 @@ function getHelpers(cellSize, pos, dir)
 	return tile, dTile, dt, dTile * cellSize / dir
 end
 
-function castRay_clearer_alldirs_improved_improved(grid, cellSize, ray)
-	local tileX, dtileX, dtX, ddtX = getHelpers(cellSize, ray.start[1], ray.dir[1])
-	local tileY, dtileY, dtY, ddtY = getHelpers(cellSize, ray.start[2], ray.dir[2])
+function castRay_clearer_alldirs_improved_transformed(grid, ray)
+	local tileX, dtileX, dtX, ddtX = getHelpers(grid.cellSize, ray.startX, ray.dirX)
+	local tileY, dtileY, dtY, ddtY = getHelpers(grid.cellSize, ray.startY, ray.dirY)
 	local t = 0
 
-	if vdot(ray.dir, ray.dir) > 0 then -- start and end should not be at the same point
-		while tileX > 0 and tileX <= width and tileY > 0 and tileY <= height do
+	if ray.dirX*ray.dirX + ray.dirY*ray.dirY > 0 then -- start and end should not be at the same point
+		while tileX > 0 and tileX <= grid.width and tileY > 0 and tileY <= grid.height do
 			grid[tileY][tileX] = true
-			mark(ray.start[1] + ray.dir[1] * t, ray.start[2] + ray.dir[2] * t)
+			mark(ray.startX + ray.dirX * t, ray.startY + ray.dirY * t)
 
 			if dtX < dtY then
 				tileX = tileX + dtileX
@@ -163,24 +165,24 @@ function castRay_clearer_alldirs_improved_improved(grid, cellSize, ray)
 	end
 end
 
-function castRay_clearer_alldirs_improved(grid, cellSize, ray)
-	local dirSignX = ray.dir[1] > 0 and 1 or -1
-	local dirSignY = ray.dir[2] > 0 and 1 or -1
+function castRay_clearer_alldirs_improved(grid, ray)
+	local dirSignX = ray.dirX > 0 and 1 or -1
+	local dirSignY = ray.dirY > 0 and 1 or -1
 	-- -1 to compensate for 1-indexed tile coordinates
-	local tileOffsetX = (ray.dir[1] > 0 and 1 or 0) - 1
-	local tileOffsetY = (ray.dir[2] > 0 and 1 or 0) - 1
+	local tileOffsetX = (ray.dirX > 0 and 1 or 0) - 1
+	local tileOffsetY = (ray.dirY > 0 and 1 or 0) - 1
 
-	local curX, curY = ray.start[1], ray.start[2]
-	local tileX, tileY = tileCoords(cellSize, curX, curY)
+	local curX, curY = ray.startX, ray.startY
+	local tileX, tileY = tileCoords(grid.cellSize, curX, curY)
 	local t = 0
 
-	if vdot(ray.dir, ray.dir) > 0 then -- start and end should not be at the same point
-		while tileX > 0 and tileX <= width and tileY > 0 and tileY <= height do
+	if ray.dirX*ray.dirX + ray.dirY*ray.dirY > 0 then -- start and end should not be at the same point
+		while tileX > 0 and tileX <= grid.width and tileY > 0 and tileY <= grid.height do
 			grid[tileY][tileX] = true
 			mark(curX, curY)
 
-			local dtX = ((tileX + tileOffsetX)*cellSize - curX) / ray.dir[1] -- distances to next borders
-			local dtY = ((tileY + tileOffsetY)*cellSize - curY) / ray.dir[2]
+			local dtX = ((tileX + tileOffsetX)*grid.cellSize - curX) / ray.dirX -- distances to next borders
+			local dtY = ((tileY + tileOffsetY)*grid.cellSize - curY) / ray.dirY
 
 			if dtX < dtY then
 				t = t + dtX
@@ -190,61 +192,63 @@ function castRay_clearer_alldirs_improved(grid, cellSize, ray)
 				tileY = tileY + dirSignY
 			end
 
-			curX = ray.start[1] + ray.dir[1] * t
-			curY = ray.start[2] + ray.dir[2] * t
+			curX = ray.startX + ray.dirX * t
+			curY = ray.startY + ray.dirY * t
 		end
 	else
 		grid[tileY][tileX] = true
 	end
 end
 
-function castRay_clearer_alldirs(grid, cellSize, ray)
+function castRay_clearer_alldirs(grid, ray)
 	local t = 0
-	local cur = vret(ray.start)
-	local dir = vret(ray.dir)
+	local curX, curY = ray.startX, ray.startY
 
-    local dirSignX = dir[1] > 0 and 0 or -1
-    local dirSignY = dir[2] > 0 and 0 or -1
+    local dirSignX = ray.dirX > 0 and 0 or -1
+    local dirSignY = ray.dirY > 0 and 0 or -1
 
-	if vdot(dir, dir) > 1 then
-		while cur[1] > 0 and cur[1] < width*cellSize and cur[2] > 0 and cur[2] < height*cellSize do
-			local tileX, tileY = tileCoords(cellSize, cur)
+	if ray.dirX*ray.dirX + ray.dirY*ray.dirY > 0 then
+		while curX > 0 and curX < grid.width*grid.cellSize and curY > 0 and curY < grid.height*grid.cellSize do
+			local tileX, tileY = tileCoords(grid.cellSize, curX, curY)
 			grid[tileY][tileX] = true
-			mark(cur)
+			mark(curX, curY)
 
-			local dtX = ((tileX + dirSignX)*cellSize - cur[1]) / dir[1] -- distances to next borders
-			local dtY = ((tileY + dirSignY)*cellSize - cur[2]) / dir[2]
+			local dtX = ((tileX + dirSignX)*grid.cellSize - curX) / ray.dirX -- distances to next borders
+			local dtY = ((tileY + dirSignY)*grid.cellSize - curY) / ray.dirY
 
 			if dtX < dtY then
 				t = t + dtX + 0.001
 			else
 				t = t + dtY + 0.001
 			end
-			cur = vadd(ray.start, vmul(dir, t))
+
+			curX = ray.startX + ray.dirX * t
+			curY = ray.startY + ray.dirY * t
 		end
 	end
 end
 
-function castRay_clearer_positive(grid, cellSize, ray) -- only works for positive x and y direction, just for clarification
+function castRay_clearer_positive(grid, ray) -- only works for positive x and y direction, just for clarification
 	local t = 0
-	local cur = vret(ray.start)
-	local dir = vret(ray.dir)
+	local curX, curY = ray.startX, ray.startY
 
-	if vdot(dir, dir) > 1 then
-		while cur[1] > 0 and cur[1] < width*cellSize and cur[2] > 0 and cur[2] < height*cellSize do
-			local tileX, tileY = tileCoords(cellSize, cur)
+	if ray.dirX*ray.dirX + ray.dirY*ray.dirY > 0 then
+		while curX > 0 and curX < grid.width*grid.cellSize and curY > 0 and curY < grid.height*grid.cellSize do
+			local tileX, tileY = tileCoords(grid.cellSize, curX, curY)
 			grid[tileY][tileX] = true
-			mark(cur)
+			mark(curX, curY)
 
-			local dtX = ((tileX)*cellSize - cur[1]) / dir[1] -- distances to next borders
-			local dtY = ((tileY)*cellSize - cur[2]) / dir[2]
+			local dtX = ((tileX)*grid.cellSize - curX) / ray.dirX -- distances to next borders
+			local dtY = ((tileY)*grid.cellSize - curY) / ray.dirY
 
 			if dtX < dtY then
 				t = t + dtX
 			else
 				t = t + dtY
 			end
-			cur = vadd(ray.start, vmul(dir, t))
+
+			curX = ray.startX + ray.dirX * t
+			curY = ray.startY + ray.dirY * t
 		end
 	end
 end
@@ -267,13 +271,14 @@ function getRayCastHelperValues(cellSize, origin, dir)
 	return tile, step, tMax, tDelta
 end
 
-function castRay_accurate(grid, cellSize, ray)
-	local x, xStep, tMaxX, tDeltaX = getRayCastHelperValues(cellSize, ray.start[1], ray.dir[1])
-	local y, yStep, tMaxY, tDeltaY = getRayCastHelperValues(cellSize, ray.start[2], ray.dir[2])
+function castRay_accurate(grid, ray)
+	local x, xStep, tMaxX, tDeltaX = getRayCastHelperValues(grid.cellSize, ray.startX, ray.dirX)
+	local y, yStep, tMaxY, tDeltaY = getRayCastHelperValues(grid.cellSize, ray.startY, ray.dirY)
 
-	while x > 0 and x <= width and y > 0 and y <= height do
+	while x > 0 and x <= grid.width and y > 0 and y <= grid.height do
 		grid[y][x] = true
-		mark(vadd(ray.start, vmul(ray.dir, math.min(tMaxX, tMaxY))))
+		local t = math.min(tMaxX, tMaxY) -- ?? lucky guess? this should not work
+		mark(ray.startX + ray.dirX * t, ray.startY + ray.dirY * t)
 
 		if(tMaxX < tMaxY) then
 			tMaxX = tMaxX + tDeltaX
@@ -285,9 +290,9 @@ function castRay_accurate(grid, cellSize, ray)
 	end
 end
 
-function castRay_DDA(grid, cellSize, ray)
-	local startX, startY = tileCoords(cellSize, ray.start)
-	local endX, endY = tileCoords(cellSize, vadd(ray.start, ray.dir))
+function castRay_DDA(grid, ray)
+	local startX, startY = tileCoords(grid.cellSize, ray.startX, ray.startY)
+	local endX, endY = tileCoords(grid.cellSize, ray.startX + ray.dirX, ray.startY + ray.dirY)
 	local relX, relY = endX - startX, endY - startY
 
 	local steps = math.max(math.abs(relX), math.abs(relY))
@@ -296,7 +301,7 @@ function castRay_DDA(grid, cellSize, ray)
 
 	if dx ~= 0 or dy ~= 0 then
 		local curX, curY = startX, startY
-		while curX > 0 and curX <= width and curY > 0 and curY <= height do
+		while curX > 0 and curX <= grid.width and curY > 0 and curY <= grid.height do
 			-- I don't know why I need this, and I feel ashamed of myself because of it
 			grid[math.floor(curY+0.5)][math.floor(curX+0.5)] = true
 			curX, curY = curX + dx, curY + dy
@@ -305,9 +310,9 @@ function castRay_DDA(grid, cellSize, ray)
 end
 
 -- https://de.wikipedia.org/wiki/Bresenham-Algorithmus#Kompakte_Variante
-function castRay_Bresenham(grid, cellSize, ray)
-	local startX, startY = tileCoords(cellSize, ray.start)
-	local endX, endY = tileCoords(cellSize, vadd(ray.start, ray.dir))
+function castRay_Bresenham(grid, ray)
+	local startX, startY = tileCoords(grid.cellSize, ray.startX, ray.startY)
+	local endX, endY = tileCoords(grid.cellSize, ray.startX + ray.dirX, ray.startY + ray.dirY)
 
 	local dx = math.abs(endX - startX)
 	local dy = math.abs(endY - startY)
@@ -321,7 +326,7 @@ function castRay_Bresenham(grid, cellSize, ray)
 		return
 	end
 
-	while startX > 0 and startX <= width and startY > 0 and startY <= height do
+	while startX > 0 and startX <= grid.width and startY > 0 and startY <= grid.height do
 		grid[startY][startX] = true
 
 		e2 = 2*err
