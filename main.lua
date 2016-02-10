@@ -39,14 +39,14 @@ function love.update()
 
 	-- cast rays
 	markers = {}
-	castRay_clearer_temp_alldirs(exactGrid, cellSize, ray)
+	castRay_clearer_alldirs(exactGrid, cellSize, ray)
 
 	markers = {}
-	castRay_naive(grid, cellSize, ray)
+	--castRay_naive(grid, cellSize, ray)
 	--castRay_accurate(grid, cellSize, ray)
-	--castRay_clearer_temp(grid, cellSize, ray)
-	--castRay_clearer_temp_alldirs(grid, cellSize, ray)
-	--castRay_clearer_temp_alldirs_improved(grid, cellSize, ray)
+	--castRay_clearer_positive(grid, cellSize, ray)
+	--castRay_clearer_alldirs(grid, cellSize, ray)
+	castRay_clearer_alldirs_improved(grid, cellSize, ray)
 	--castRay_DDA(grid, cellSize, ray)
 	--castRay_Bresenham(grid, cellSize, ray)
 end
@@ -95,8 +95,9 @@ function love.draw()
 	love.graphics.print("ray end: " .. vstr(ray.dir), 5, 15)
 end
 
-function tileCoords(cellSize, p)
-	return math.floor(p[1] / cellSize) + 1, math.floor(p[2] / cellSize) + 1
+function tileCoords(cellSize, x, y)
+	if y == nil then x, y = x[1], x[2] end
+	return math.floor(x / cellSize) + 1, math.floor(y / cellSize) + 1
 end
 
 function mark(x, y)
@@ -118,7 +119,42 @@ function castRay_naive(grid, cellSize, ray)
 	end
 end
 
-function castRay_clearer_temp_alldirs(grid, cellSize, ray)
+function castRay_clearer_alldirs_improved(grid, cellSize, ray)
+    local dirSignX = ray.dir[1] > 0 and 1 or -1
+    local dirSignY = ray.dir[2] > 0 and 1 or -1
+    -- -1 to compensate for 1-indexed tile coordinates
+    local tileOffsetX = (ray.dir[1] > 0 and 1 or 0) - 1
+    local tileOffsetY = (ray.dir[2] > 0 and 1 or 0) - 1
+
+	local curX, curY = ray.start[1], ray.start[2]
+    local tileX, tileY = tileCoords(cellSize, curX, curY)
+	local t = 0
+
+	if vdot(ray.dir, ray.dir) > 0 then -- start and end should not be at the same point
+		while tileX > 0 and tileX <= width and tileY > 0 and tileY <= height do
+			grid[tileY][tileX] = true
+			mark(curX, curY)
+
+			local dtX = ((tileX + tileOffsetX)*cellSize - curX) / ray.dir[1] -- distances to next borders
+			local dtY = ((tileY + tileOffsetY)*cellSize - curY) / ray.dir[2]
+
+			if dtX < dtY then
+				t = t + dtX
+				tileX = tileX + dirSignX
+			else
+				t = t + dtY
+				tileY = tileY + dirSignY
+			end
+
+			curX = ray.start[1] + ray.dir[1] * t
+			curY = ray.start[2] + ray.dir[2] * t
+		end
+	else
+		grid[tileY][tileX] = true
+	end
+end
+
+function castRay_clearer_alldirs(grid, cellSize, ray)
 	local t = 0
 	local cur = vret(ray.start)
 	local dir = vret(ray.dir)
@@ -145,37 +181,7 @@ function castRay_clearer_temp_alldirs(grid, cellSize, ray)
 	end
 end
 
-function castRay_clearer_temp_alldirs_improved(grid, cellSize, ray)
-	local t = 0
-	local cur = vret(ray.start)
-	local dir = vret(ray.dir)
-
-    local dirSignX = dir[1] > 0 and 0 or -1
-    local dirSignY = dir[2] > 0 and 0 or -1
-
-    local tileX, tileY = tileCoords(cellSize, cur)
-
-	if vdot(dir, dir) > 1 then
-		while tileX > 0 and tileX <= width and tileY > 0 and tileY <= height do
-			grid[tileY][tileX] = true
-			mark(cur)
-
-			local dtX = ((tileX + dirSignX)*cellSize - cur[1]) / dir[1] -- distances to next borders
-			local dtY = ((tileY + dirSignY)*cellSize - cur[2]) / dir[2]
-
-			if dtX < dtY then
-				t = t + dtX
-				tileX = tileX + 1
-			else
-				t = t + dtY
-				tileY = tileY + 1
-			end
-			cur = vadd(ray.start, vmul(dir, t))
-		end
-	end
-end
-
-function castRay_clearer_temp(grid, cellSize, ray) -- only works for positive x and y direction, just for clarification
+function castRay_clearer_positive(grid, cellSize, ray) -- only works for positive x and y direction, just for clarification
 	local t = 0
 	local cur = vret(ray.start)
 	local dir = vret(ray.dir)
