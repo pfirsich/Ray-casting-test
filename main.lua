@@ -97,7 +97,8 @@ end
 
 function castRay_naive(grid, cellSize, ray)
 	local cur = vret(ray.start)
-	local dir = vmul(vnormed(ray.dir), cellSize * 0.9)
+	local stepSize = cellSize * 0.9
+	local dir = vmul(vnormed(ray.dir), stepSize)
 	if vdot(dir, dir) > 1 then
 		while cur[1] > 0 and cur[1] < width*cellSize and cur[2] > 0 and cur[2] < height*cellSize do
 			local tileX, tileY = tileCoords(cellSize, cur)
@@ -235,7 +236,7 @@ function castRay_DDA(grid, cellSize, ray)
 	local dx, dy = relX / steps, relY / steps
 
 	if dx ~= 0 or dy ~= 0 then
-		local curX, curY = tileCoords(cellSize, ray.start)
+		local curX, curY = startX, startY
 		while curX > 0 and curX <= width and curY > 0 and curY <= height do
 			grid[math.floor(curY)][math.floor(curX)] = true
 			curX, curY = curX + dx, curY + dy
