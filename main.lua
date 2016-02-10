@@ -246,7 +246,8 @@ function castRay_DDA(grid, cellSize, ray)
 	if dx ~= 0 or dy ~= 0 then
 		local curX, curY = startX, startY
 		while curX > 0 and curX <= width and curY > 0 and curY <= height do
-			grid[math.floor(curY)][math.floor(curX)] = true
+			-- I don't know why I need this, and I feel ashamed of myself because of it
+			grid[math.floor(curY+0.5)][math.floor(curX+0.5)] = true
 			curX, curY = curX + dx, curY + dy
 		end
 	end
