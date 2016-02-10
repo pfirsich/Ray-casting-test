@@ -119,35 +119,44 @@ function castRay_naive(grid, cellSize, ray)
 	end
 end
 
-function castRay_clearer_alldirs_improved(grid, cellSize, ray)
-    local dirSignX = ray.dir[1] > 0 and 1 or -1
-    local dirSignY = ray.dir[2] > 0 and 1 or -1
-    -- -1 to compensate for 1-indexed tile coordinates
-    local tileOffsetX = (ray.dir[1] > 0 and 1 or 0) - 1
-    local tileOffsetY = (ray.dir[2] > 0 and 1 or 0) - 1
+function getHelpers(cellSize, pos, dir)
+	local tile = math.floor(pos / cellSize) + 1
 
-	local curX, curY = ray.start[1], ray.start[2]
-    local tileX, tileY = tileCoords(cellSize, curX, curY)
+	local dTile, dt
+	if dir > 0 then
+		dTile = 1
+		dt = ((tile+0)*cellSize - pos) / dir
+	else
+		dTile = -1
+		dt = ((tile-1)*cellSize - pos) / dir
+	end
+
+	return tile, dTile, dt, dTile * cellSize / dir
+end
+
+function castRay_clearer_alldirs_improved_improved(grid, cellSize, ray)
+	local tileX, dtileX, dtX, ddtX = getHelpers(cellSize, ray.start[1], ray.dir[1])
+	local tileY, dtileY, dtY, ddtY = getHelpers(cellSize, ray.start[2], ray.dir[2])
 	local t = 0
 
 	if vdot(ray.dir, ray.dir) > 0 then -- start and end should not be at the same point
 		while tileX > 0 and tileX <= width and tileY > 0 and tileY <= height do
 			grid[tileY][tileX] = true
-			mark(curX, curY)
-
-			local dtX = ((tileX + tileOffsetX)*cellSize - curX) / ray.dir[1] -- distances to next borders
-			local dtY = ((tileY + tileOffsetY)*cellSize - curY) / ray.dir[2]
+			mark(ray.start[1] + ray.dir[1] * t, ray.start[2] + ray.dir[2] * t)
 
 			if dtX < dtY then
-				t = t + dtX
-				tileX = tileX + dirSignX
+				tileX = tileX + dtileX
+				local dt = dtX
+				t = t + dt
+				dtX = dtX + ddtX - dt
+				dtY = dtY - dt
 			else
-				t = t + dtY
-				tileY = tileY + dirSignY
+				tileY = tileY + dtileY
+				local dt = dtY
+				t = t + dt
+				dtX = dtX - dt
+				dtY = dtY + ddtY - dt
 			end
-
-			curX = ray.start[1] + ray.dir[1] * t
-			curY = ray.start[2] + ray.dir[2] * t
 		end
 	else
 		grid[tileY][tileX] = true
