@@ -128,6 +128,9 @@ function getHelpers(cellSize, pos, dir)
 	if dir > 0 then
 		dTile = 1
 		dt = ((tile+0)*cellSize - pos) / dir
+	elseif dir == 0 then
+        	dTile = 0
+		dt = ((tile+0)*cellSize - pos) / dir
 	else
 		dTile = -1
 		dt = ((tile-1)*cellSize - pos) / dir
